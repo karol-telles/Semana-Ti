@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Calculadora</title>
+  <style>
+    :root {
+      --bg: #0f1115;
+      --panel: #171923;
+      --btn: #222636;
+      --btn-alt: #2a3044;
+      --accent: #7c5cff;
+      --text: #e8eaf2;
+      --muted: #9aa3b2;
+      --danger: #ff4d4f;
+      --ok: #1ec28b;
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+      --radius: 18px;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      height: 100%;
+      background: radial-gradient(1200px 800px at 20% -10%, #1a1f35 0%, #0f1115 60%);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+    }
+    .wrap {
+      min-height: 100%;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+    .calc {
+      width: clamp(320px, 90vw, 420px);
+      background: linear-gradient(180deg, #191c28 0%, #121523 100%);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,.06);
+    }
+    .display {
+      padding: 22px 20px 8px;
+      text-align: right;
+      background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,0));
+    }
+    .history {
+      min-height: 22px;
+      color: var(--muted);
+      font-size: 14px;
+      letter-spacing: .3px;
+      user-select: none;
+    }
+    .value {
+      font-variant-numeric: tabular-nums lining-nums;
+      font-size: clamp(34px, 5.5vw, 42px);
+      font-weight: 700;
+      margin-top: 6px;
+      line-height: 1.2;
+      word-break: break-all;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      padding: 16px;
+      background: linear-gradient(180deg, #0e121f 0%, #0d111b 100%);
+    }
+    button.key {
+      -webkit-tap-highlight-color: transparent;
+      border: 0;
+      border-radius: 14px;
+      padding: 16px 12px;
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--text);
+      background: var(--btn);
+      box-shadow: inset 0 -2px 0 rgba(0,0,0,.25);
+      cursor: pointer;
+      transition: transform .04s ease, filter .15s ease, background .15s ease;
+      user-select: none;
+    }
+    button.key:active { transform: translateY(2px); }
+    .op { background: var(--btn-alt); }
+    .accent { background: linear-gradient(180deg, #8b74ff, #634bff); }
+    .danger { background: linear-gradient(180deg, #ff6b6d, #ff4446); }
+    .ok { background: linear-gradient(180deg, #27d6a0, #12b785); }
+    .span-2 { grid-column: span 2; }
+    .sr { position: absolute; left: -9999px; }
+    .footer {
+      text-align: center;
+      font-size: 12px;
+      color: var(--muted);
+      padding: 8px 0 16px;
+      user-select: none;
+    }
+    .row { grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; gap: 10px; }
+    @media (hover:hover) {
+      button.key:hover { filter: brightness(1.05); }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <main class="calc" role="application" aria-label="Calculadora">
+      <section class="display" aria-live="polite">
+        <div class="history" id="history">&nbsp;</div>
+        <div class="value" id="display">0</div>
+      </section>
+      <section class="grid" id="keys">
+        <button class="key danger" data-action="clear-all" title="Borrar todo (Esc)">AC</button>
+        <button class="key" data-action="clear-entry" title="Borrar entrada (Backspace)">CE</button>
+        <button class="key" data-action="percent" title="Porcentaje (%)">%</button>
+        <button class="key op" data-op="÷" title="Dividir (/)">÷</button>
+
+        <button class="key" data-num="7">7</button>
+        <button class="key" data-num="8">8</button>
+        <button class="key" data-num="9">9</button>
+        <button class="key op" data-op="×" title="Multiplicar (*)">×</button>
+
+        <button class="key" data-num="4">4</button>
+        <button class="key" data-num="5">5</button>
+        <button class="key" data-num="6">6</button>
+        <button class="key op" data-op="−" title="Restar (-)">−</button>
+
+        <button class="key" data-num="1">1</button>
+        <button class="key" data-num="2">2</button>
+        <button class="key" data-num="3">3</button>
+        <button class="key op" data-op="+" title="Sumar (+)">+</button>
+
+        <button class="key" data-action="toggle-sign" title="Cambiar signo (±)">±</button>
+        <button class="key" data-num="0">0</button>
+        <button class="key" data-action="dot">.</button>
+        <button class="key accent" data-action="equals" title="Resultado (= / Enter)">=</button>
+
+        <div class="row">
+          <button class="key ok span-2" data-action="copy" title="Copiar resultado (Ctrl/Cmd+C)">Copiar</button>
+          <button class="key span-2" data-action="backspace" title="Borrar un dígito (⌫)">⌫</button>
+        </div>
+      </section>
+      <div class="footer">Soporta teclado: 0–9 . + - * / % Enter Esc Backspace</div>
+    </main>
+  </div>
+
+  <script>
+    (() => {
+      const displayEl = document.getElementById('display');
+      const historyEl = document.getElementById('history');
+      const keys = document.getElementById('keys');
+
+      const state = {
+        a: '0',          // operando actual en pantalla
+        b: null,         // siguiente operando (cuando ya hay operador)
+        op: null,        // operador pendiente
+        justEvaluated: false
+      };
+
+      const fmt = (v) => {
+        if (!isFinite(v)) return '∞';
+        const s = v.toString();
+        // Evitar notación científica y limitar decimales
+        if (Math.abs(v) >= 1e12) return v.toExponential(6).replace('+', '');
+        const parts = s.split('.');
+        parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+        if (parts[1]?.length > 10) parts[1] = parts[1].slice(0, 10).replace(/0+$/,'');
+        return parts[1] ? parts.join('.') : parts[0];
+      };
+
+      const updateUI = () => {
+        const current = state.op && state.b !== null ? state.b : state.a;
+        displayEl.textContent = current === '' ? '0' : fmt(Number(current));
+        const h = [state.a, state.op, state.b].filter(Boolean).join(' ');
+        historyEl.textContent = h || '\u00A0';
+      };
+
+      const inputDigit = (d) => {
+        if (state.justEvaluated && !state.op) { // empezar nuevo cálculo
+          state.a = d === '.' ? '0.' : d;
+          state.justEvaluated = false;
+          return updateUI();
+        }
+        if (!state.op) {
+          if (d === '.') {
+            if (!state.a.includes('.')) state.a += '.';
+          } else {
+            state.a = (state.a === '0' && d !== '.') ? d : state.a + d;
+          }
+        } else {
+          if (state.b === null) state.b = (d === '.') ? '0.' : d;
+          else {
+            if (d === '.') { if (!state.b.includes('.')) state.b += '.'; }
+            else state.b += d;
+          }
+        }
+        updateUI();
+      };
+
+      const applyPercent = () => {
+        if (!state.op) {
+          state.a = String(Number(state.a) / 100);
+        } else if (state.b !== null) {
+          // % relativo al primer operando (estilo calculadora)
+          const base = Number(state.a);
+          state.b = String((base * Number(state.b)) / 100);
+        }
+        updateUI();
+      };
+
+      const toggleSign = () => {
+        if (!state.op) {
+          state.a = String(-Number(state.a || '0'));
+        } else {
+          if (state.b === null) state.b = '0';
+          state.b = String(-Number(state.b));
+        }
+        updateUI();
+      };
+
+      const backspace = () => {
+        if (!state.op) {
+          state.a = state.a.length > 1 ? state.a.slice(0, -1) : '0';
+        } else if (state.b !== null) {
+          state.b = state.b.length > 1 ? state.b.slice(0, -1) : '';
+        }
+        updateUI();
+      };
+
+      const clearEntry = () => {
+        if (!state.op) state.a = '0';
+        else state.b = null;
+        state.justEvaluated = false;
+        updateUI();
+      };
+
+      const clearAll = () => {
+        state.a = '0'; state.b = null; state.op = null; state.justEvaluated = false;
+        updateUI();
+      };
+
+      const operate = (a, op, b) => {
+        a = Number(a); b = Number(b);
+        switch (op) {
+          case '+': return a + b;
+          case '−': return a - b;
+          case '×': return a * b;
+          case '÷': return b === 0 ? NaN : a / b;
+          default:  return b;
+        }
+      };
+
+      const setOperator = (op) => {
+        if (state.b !== null) {
+          // encadenar operaciones
+          const result = operate(state.a, state.op, state.b);
+          state.a = isFinite(result) ? String(result) : '0';
+          state.b = null;
+        }
+        state.op = op;
+        state.justEvaluated = false;
+        updateUI();
+      };
+
+      const equals = () => {
+        if (state.op && state.b !== null) {
+          const result = operate(state.a, state.op, state.b);
+          state.a = isFinite(result) ? String(result) : '0';
+          state.b = null;
+          state.op = null;
+          state.justEvaluated = true;
+          updateUI();
+        }
+      };
+
+      const copyResult = async () => {
+        const text = displayEl.textContent.replace(/,/g,'');
+        try {
+          await navigator.clipboard.writeText(text);
+          historyEl.textContent = 'Copiado ✔';
+          setTimeout(updateUI, 900);
+        } catch {
+          historyEl.textContent = 'No se pudo copiar';
+          setTimeout(updateUI, 900);
+        }
+      };
+
+      // Clicks
+      keys.addEventListener('click', (e) => {
+        const k = e.target.closest('button.key');
+        if (!k) return;
+        const num = k.dataset.num;
+        const op  = k.dataset.op;
+        const act = k.dataset.action;
+
+        if (num !== undefined) return inputDigit(num);
+        if (op) return setOperator(op);
+
+        switch (act) {
+          case 'dot': return inputDigit('.');
+          case 'percent': return applyPercent();
+          case 'toggle-sign': return toggleSign();
+          case 'clear-entry': return clearEntry();
+          case 'clear-all': return clearAll();
+          case 'equals': return equals();
+          case 'backspace': return backspace();
+          case 'copy': return copyResult();
+        }
+      });
+
+      // Teclado
+      window.addEventListener('keydown', (e) => {
+        const key = e.key;
+        if (/^\d$/.test(key)) return inputDigit(key);
+        if (key === '.') return inputDigit('.');
+        if (key === '+' || key === '-') return setOperator(key === '+' ? '+' : '−');
+        if (key === '*' ) return setOperator('×');
+        if (key === '/' ) return setOperator('÷');
+        if (key === 'Enter' || key === '=') return equals();
+        if (key === 'Backspace') return backspace();
+        if (key === 'Escape') return clearAll();
+        if (key === '%') return applyPercent();
+        if ((e.ctrlKey || e.metaKey) && key.toLowerCase() === 'c') return copyResult();
+      });
+
+      updateUI();
+    })();
+  </script>
+</body>
+</html>
